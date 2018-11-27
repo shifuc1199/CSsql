@@ -1034,7 +1034,7 @@ namespace Task3
 
                 string temp = Sqls.Dequeue();
                 paramsname.Add(temp);
-
+              
                 if (Sqls.Count == 0)
                     return false;
                 string a = Sqls.Dequeue();
@@ -1099,26 +1099,29 @@ namespace Task3
                                 }
                                  
                             }
+                        
                             for (int i = 0; i < paramsname.Count; i++)
                             {
                                
                                 if (!AllParams.Contains(paramsname[i])&& paramsname[i]!="*")
                                     return false;
                             }
-                            
+                           
                             if (Sqls.Count == 0)
                                 return false;
                            
                             while (Sqls.Count > 0)
                             {
+
                                 string c = Sqls.Dequeue();
                                 if (!AllParams.Contains(c))
                                     return false;
-
+                              
                                 givenparamsname.Add(c);
 
                                 if (Sqls.Count == 0)
                                     return false;
+
                                 string d = Sqls.Dequeue();
                                 if (d == "=")
                                 {
@@ -1137,6 +1140,7 @@ namespace Task3
 
                                 if (Sqls.Count == 0)
                                     return false;
+
                                 string e = Sqls.Dequeue();
                               
                                  givenvalues.Add(e);
@@ -1147,9 +1151,10 @@ namespace Task3
                                 }
                                else
                                 {
-                                   
-                                    if (!QueueEquals(","))
+                                  
+                                    if (!QueueEquals("and"))
                                         return false;
+                                  
                                 }
 
 
@@ -1410,23 +1415,19 @@ namespace Task3
             }
             for (int j = 0; j < table["Values"].Count; j++)
              {  
-                JsonData jd = new JsonData();
+              
                 int count = 0;
                 for (int i = 0; i < givenvalue.Count; i++)
                 {
-                    if (table["Values"][j][result["Params"][i]["ParamName"].ToString()].ToString() == givenvalue[i])
-                    {
+                     
+                    if (table["Values"][j][givenparam[i]].ToString() == givenvalue[i])
+                    {        
                         count++;
                     }
                 }
                 if (count == givenvalue.Count)
-                {
-                    for (int i = 0; i < result["Params"].Count; i++)
-                    {
-                        jd[result["Params"][i]["ParamName"].ToString()] = table["Values"][j][result["Params"][i]["ParamName"].ToString()].ToString();
-                    }
-                     
-                    result["Values"].Add(jd);
+                {   
+                    result["Values"].Add(table["Values"][j]);
                 }
 
             }
@@ -1475,34 +1476,48 @@ namespace Task3
         bool SelectGivenValue()
         {
             bool result = GetSelectParamList();
-            List<JsonData> temp = new List<JsonData>()
+            
+            if(tablename.Count>1)
             {
-                JsonMapper.ToObject(FileHelper.GetFileContenct("testtable", FileType.Table)),
-                JsonMapper.ToObject(FileHelper.GetFileContenct("testtable2", FileType.Table)),
-                JsonMapper.ToObject(FileHelper.GetFileContenct("testtable3", FileType.Table))
-             };   
-            Console.WriteLine(ChooseTable(new List<string>() { "a" }, new List<string>() { "33333" }, temp[0]).ToJson());
-            ShowTable(JsonMapper.ToObject(FileHelper.GetFileContenct("testtable", FileType.Table)));
-            foreach (var item in paramsname)
-            {
-                Console.WriteLine(item);
+                List<JsonData> TablesJson = new List<JsonData>();
+                for (int i = 0; i < tablename.Count; i++)
+                {
+                    TablesJson.Add(JsonMapper.ToObject(FileHelper.GetFileContenct(tablename[i], FileType.Table)));
+                }
+              
+           
+                JsonData Result = SelectDataFromTable(paramsname, ChooseTable(givenparamsname, givenvalues, ConnectTable(TablesJson)));
+                Console.WriteLine(Result.ToJson());
             }
-          
-            foreach (var item in tablename)
-            {
-             
-                Console.WriteLine(item);
-            }
-       
-            foreach (var item in givenparamsname)
-            {
-                Console.WriteLine(item);
-            }
-       
-            foreach (var item in givenvalues)
-            {
-                Console.WriteLine(item);
-            }
+
+            // List<JsonData> temp = new List<JsonData>()
+            // {
+            //     JsonMapper.ToObject(FileHelper.GetFileContenct("testtable", FileType.Table)),
+            //     JsonMapper.ToObject(FileHelper.GetFileContenct("testtable2", FileType.Table)),
+            //     JsonMapper.ToObject(FileHelper.GetFileContenct("testtable3", FileType.Table))
+            //};   
+            // Console.WriteLine(ChooseTable(new List<string>() { "a" }, new List<string>() { "33333" }, temp[0]).ToJson());
+            // ShowTable(JsonMapper.ToObject(FileHelper.GetFileContenct("testtable", FileType.Table)));
+            // foreach (var item in paramsname)
+            // {
+            //     Console.WriteLine(item);
+            // }
+
+            // foreach (var item in tablename)
+            // {
+
+            //     Console.WriteLine(item);
+            // }
+
+            //foreach (var item in givenparamsname)
+            //{
+            //    Console.WriteLine(item);
+            //}
+
+            //foreach (var item in givenvalues)
+            //{
+            //    Console.WriteLine(item);
+            //}
 
 
 

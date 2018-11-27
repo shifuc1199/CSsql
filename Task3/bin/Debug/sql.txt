@@ -1,1 +1,2 @@
 create database test;use test;create table testtable(a int,b string);insert into testtable values(4,5);insert into testtable values(3,6);select * from testtable
+select a,d from testtable,testtable3 where a=33333 and d=10
