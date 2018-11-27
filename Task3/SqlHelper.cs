@@ -1392,9 +1392,45 @@ namespace Task3
             }
             return temp;
         }
-        JsonData ChooseTable(List<string> givenparam,List<string> givenvalue)
+        JsonData ChooseTable(List<string> givenparam,List<string> givenvalue,JsonData table)
         {
+            JsonData result = new JsonData();
+            result["Params"] = new JsonData();
+            result["Values"] = new JsonData();
+            List<string> temp = new List<string>();
+            for (int i = 0; i < table["Params"].Count; i++)
+            {
+                result["Params"].Add(table["Params"][i]);
+                temp.Add(table["Params"][i]["ParamName"].ToString());          
+            }
+            for (int i = 0; i < givenparam.Count; i++)
+            {
+                if (!temp.Contains(givenparam[i]))
+                 return null;
+            }
+            for (int j = 0; j < table["Values"].Count; j++)
+             {  
+                JsonData jd = new JsonData();
+                int count = 0;
+                for (int i = 0; i < givenvalue.Count; i++)
+                {
+                    if (table["Values"][j][result["Params"][i]["ParamName"].ToString()].ToString() == givenvalue[i])
+                    {
+                        count++;
+                    }
+                }
+                if (count == givenvalue.Count)
+                {
+                    for (int i = 0; i < result["Params"].Count; i++)
+                    {
+                        jd[result["Params"][i]["ParamName"].ToString()] = table["Values"][j][result["Params"][i]["ParamName"].ToString()].ToString();
+                    }
+                     
+                    result["Values"].Add(jd);
+                }
 
+            }
+            return result;
         }
         JsonData SelectDataFromTable(List<string> paramname,JsonData table)
         {
@@ -1444,9 +1480,8 @@ namespace Task3
                 JsonMapper.ToObject(FileHelper.GetFileContenct("testtable", FileType.Table)),
                 JsonMapper.ToObject(FileHelper.GetFileContenct("testtable2", FileType.Table)),
                 JsonMapper.ToObject(FileHelper.GetFileContenct("testtable3", FileType.Table))
-                };
-        
-            Console.WriteLine(SelectDataFromTable(new List<string>() { "a" },ConnectTable(temp)).ToJson());
+             };   
+            Console.WriteLine(ChooseTable(new List<string>() { "a" }, new List<string>() { "33333" }, temp[0]).ToJson());
             ShowTable(JsonMapper.ToObject(FileHelper.GetFileContenct("testtable", FileType.Table)));
             foreach (var item in paramsname)
             {
