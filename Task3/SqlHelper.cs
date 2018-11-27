@@ -1419,12 +1419,25 @@ namespace Task3
                 int count = 0;
                 for (int i = 0; i < givenvalue.Count; i++)
                 {
+                    if (!temp.Contains(givenvalue[i]))
+                    {
+                        if (table["Values"][j][givenparam[i]].ToString() == givenvalue[i])
+                        {
+                            count++;
+                        }
+                    }
+                    else
+                    {
                      
-                    if (table["Values"][j][givenparam[i]].ToString() == givenvalue[i])
-                    {        
-                        count++;
+                        if (table["Values"][j][givenparam[i]].ToString() == table["Values"][j][givenvalue[i]].ToString())
+                        {
+                           
+                            count++;
+                           
+                        }
                     }
                 }
+                
                 if (count == givenvalue.Count)
                 {   
                     result["Values"].Add(table["Values"][j]);
@@ -1442,7 +1455,7 @@ namespace Task3
             }
             for (int i = 0; i < paramname.Count; i++)
             {
-                if (!temp.Contains(paramname[i]))
+                if (!temp.Contains(paramname[i])&&paramname[i]!="*")
                     return null;
             }
             List<int> Rows = new List<int>();
@@ -1453,7 +1466,14 @@ namespace Task3
             {
                 for (int j = 0; j < table["Params"].Count; j++)
                 {
-                    if (table["Params"][j]["ParamName"].ToString() == paramname[i])
+                    if (paramname[i] != "*")
+                    {
+                        if (table["Params"][j]["ParamName"].ToString() == paramname[i])
+                        {
+                            Result["Params"].Add(table["Params"][j]);
+                        }
+                    }
+                    else
                     {
                         Result["Params"].Add(table["Params"][j]);
                     }
@@ -1465,9 +1485,17 @@ namespace Task3
                 JsonData tempjson = new JsonData();
                 for (int i = 0; i < paramname.Count; i++)
                 {
-                   
-                    tempjson[paramname[i]] = table["Values"][j][paramname[i]];
-                  
+                    if (paramname[i] != "*")
+                    {
+                        tempjson[paramname[i]] = table["Values"][j][paramname[i]];
+                    }
+                    else
+                    {
+                            for (int k = 0; k < table["Params"].Count; k++)
+                            {
+                                tempjson[table["Params"][k]["ParamName"].ToString()] = table["Values"][j][table["Params"][k]["ParamName"].ToString()];
+                            }
+                    }
                 }
                 Result["Values"].Add(tempjson);
             }
@@ -1484,10 +1512,8 @@ namespace Task3
                 {
                     TablesJson.Add(JsonMapper.ToObject(FileHelper.GetFileContenct(tablename[i], FileType.Table)));
                 }
-              
-           
                 JsonData Result = SelectDataFromTable(paramsname, ChooseTable(givenparamsname, givenvalues, ConnectTable(TablesJson)));
-                Console.WriteLine(Result.ToJson());
+                ShowTable(Result);
             }
 
             // List<JsonData> temp = new List<JsonData>()
