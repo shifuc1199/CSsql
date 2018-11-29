@@ -414,7 +414,69 @@ namespace Task3
 
 
         }
-        
+        public bool Find(string key, out Record r)  //查找并返回查找到的叶子节点
+        {
+            Node node = RootNode;
+            r = null;
+            if (node == null)
+            {
+                if (RootLeafNode == null)
+                    return false;
+            }
+            while (node != null)
+            {
+                bool Insert = false;
+                if (node is ChildNode)
+                {
+                    for (int i = 0; i < (node as ChildNode).Keys.Count; i++)
+                    {
+                        if (int.Parse(key) < int.Parse((node as ChildNode).Keys[i]))
+                        {
+
+                            Insert = true;
+
+                            node = (node as ChildNode).Nodes[i];
+                            break;
+                        }
+                    }
+                    if (!Insert)
+                    {
+                        node = (node as ChildNode).Nodes[(node as ChildNode).Keys.Count];
+                    }
+
+                }
+                else
+                {
+
+                    for (int i = 0; i < (node as LeafNode).Records.Count; i++)
+                    {
+
+                        if (int.Parse(key) == int.Parse((node as LeafNode).Records[i].Key))
+                        {
+                            r = (node as LeafNode).Records[i];
+                            Console.WriteLine("找到了");
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+
+            }
+
+            for (int i = 0; i < RootLeafNode.Records.Count; i++)
+            {
+                if (int.Parse(key) == int.Parse(RootLeafNode.Records[i].Key))
+                {
+                    r = RootLeafNode.Records[i];
+                    Console.WriteLine("找到了");
+                    return true;
+                }
+            }
+
+            return false;
+
+
+        }
         public bool Find(string key,out LeafNode ln)  //查找并返回查找到的叶子节点
         {
             Node node = RootNode;

@@ -1,0 +1,1 @@
+{"Params":[{"ParamName":"gradecourseid","Type":"int"},{"ParamName":"coursestudentid","Type":"int"},{"ParamName":"score","Type":"int"}],"Values":[{"gradecourseid":1,"coursestudentid":1,"score":90},{"gradecourseid":1,"coursestudentid":2,"score":80}]}

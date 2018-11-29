@@ -99,6 +99,22 @@ namespace Task3
                     {
                         result += ' ';
                     }
+                    if (sql[i + 1] == '>')
+                    {
+                        result += ' ';
+                    }
+                    if (sql[i] == '>')
+                    {
+                        result += ' ';
+                    }
+                    if (sql[i + 1] == '<')
+                    {
+                        result += ' ';
+                    }
+                    if (sql[i] == '<')
+                    {
+                        result += ' ';
+                    }
                     if (sql[i + 1] == '=')
                     {
                         result += ' ';

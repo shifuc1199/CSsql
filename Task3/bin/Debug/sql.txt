@@ -1,2 +1,16 @@
-create database test;use test;create table testtable(a int,b string);insert into testtable values(4,5);insert into testtable values(3,6);select * from testtable
-select a,d from testtable,testtable3 where a=33333 and d=10
+create database class;use class;create table student(id int,name string,age int,sex string);insert into student values(1,师鸿博,21,男);insert into student values(002,王天桥,22,女);insert into student values(003,邵佳豪,23,男);insert into student values(004,王冠淇,21,男)
+use class;create table course(courseid int,coursename string,studentid int);insert into course values(1,数据结构,1);insert into course values(1,数据结构,2)
+create table grade(courseid int,studentid int,score int) 
+
+
+
+
+
+[用户操作]
+create user username=xxx,password=xxx set insert=false,create=false
+update user username=xxx insert=xxx，
+drop user username=123
+
+[系统操作]
+exit 退出系统
+change user username=xxx password=xxx 切换用户

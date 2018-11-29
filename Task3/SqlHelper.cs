@@ -5,6 +5,8 @@ using System.Text;
 using System.IO;
 using System.Threading.Tasks;
 using LitJson;
+using System.Diagnostics;
+
 namespace Task3
 {
     class SqlHelper
@@ -95,6 +97,7 @@ namespace Task3
                         Manager.UserData = jd[i];
                         Console.WriteLine("数据库启动成功!!");
                         Console.WriteLine();
+                        Console.WriteLine("你的权限: "+"Create:"+ (bool)Manager.UserData["create"]+" Insert:"+ (bool)Manager.UserData["insert"]+" Drop:"+ (bool)Manager.UserData["drop"]+" Update:"+ (bool)Manager.UserData["update"]+" Select:"+ (bool)Manager.UserData["select"]+" Delete:"+ (bool)Manager.UserData["delete"]+" Alter:"+ (bool)Manager.UserData["alter"]);
                         Console.WriteLine();
                         Console.Write("CSSql-->");
                         return;
@@ -123,7 +126,43 @@ namespace Task3
              
             return Commond();
         }
+        bool ChangeUser()
+        {
+            if (!QueueEquals("user"))
+                return false;
+            if (!QueueEquals("username"))
+                return false;
+            if (!QueueEquals("="))
+                return false;
+            if (Sqls.Count == 0)
+                return false;
+            string username = Name();
+            if (!QueueEquals("password"))
+                return false;
+            if (!QueueEquals("="))
+                return false;
+            if (Sqls.Count == 0)
+                return false;
+            string password = Name();
 
+            JsonData jd = JsonMapper.ToObject(FileHelper.GetFileContenct("Manager.json", FileType.Default));
+            for (int i = 0; i < jd.Count; i++)
+            {
+                if(jd[i]["UserName"].ToString()==username)
+                {
+                    if (jd[i]["Password"].ToString() == password)
+                    {
+                        Manager.UserData = jd[i];
+                        Manager.DatabaseName = "";
+                        Console.WriteLine("切换成功!");
+                        Console.WriteLine("你的权限: " + "Create:" + (bool)Manager.UserData["create"] + " Insert:" + (bool)Manager.UserData["insert"] + " Drop:" + (bool)Manager.UserData["drop"] + " Update:" + (bool)Manager.UserData["update"] + " Select:" + (bool)Manager.UserData["select"] + " Delete:" + (bool)Manager.UserData["delete"] + " Alter:" + (bool)Manager.UserData["alter"]);
+
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
         bool Commond()
         {
         
@@ -132,35 +171,65 @@ namespace Task3
             string s = Sqls.Dequeue();
             switch (s)
             {
+                case "exit":
+                    Environment.Exit(0);
+                    break;
+                case "change":
+                     
+                        return ChangeUser();
+                     
+                    //Manager.isLogin = false;
+                    //SqlHelper sq = new SqlHelper();
+                    //string sql = Console.ReadLine();
+                    //string[] sqls = sql.Split(';');
+                    //for (int i = 0; i < sqls.Length; i++)
+                    //{
+                    //    sq.Init();
+                    //    Console.WriteLine(sq.SqlParser(sqls[i]));
+                    //}
+                    //return true;
+
                 case "create":
                 if ((bool)Manager.UserData["create"])
                 return (Create());
+                else
+                        Console.WriteLine("你没有Create权限！");
                 break;
                 case "use":
                     return (Use());
                 case "insert":
                     if ((bool)Manager.UserData["insert"])
                         return (Insert());
+                    Console.WriteLine("你没有Insert权限！");
                     break;
                 case "drop":
                     if ((bool)Manager.UserData["drop"])
                         return (Drop());
+                    else
+                        Console.WriteLine("你没有Drop权限！");
                     break;
                 case "update":
                     if ((bool)Manager.UserData["update"])
                         return (Update());
+                    Console.WriteLine("你没有Update权限！");
                     break;
                 case "select":
                  if ((bool)Manager.UserData["select"])
                     return (Select());
+                 else
+                    Console.WriteLine("你没有Select权限！");
                     break;
                 case "delete":
                     if ((bool)Manager.UserData["delete"])
                         return (Delete());
+                    else
+                        Console.WriteLine("你没有Delete权限！");
                     break;
                 case "alter":
                     if ((bool)Manager.UserData["alter"])
                         return (AlterTable());
+                    else
+                        Console.WriteLine("你没有Alter权限！");
                     break;
                 case "show":
                     return (Show());
@@ -206,13 +275,13 @@ namespace Task3
         }
         bool ShowDatabase()
         {
-            JsonData jd = JsonMapper.ToObject(FileHelper.GetFileContenct("Manager.json", FileType.Default));
-            if (!jd.Keys.Contains("DataBase"))
+           
+            if (!Manager.UserData.Keys.Contains("DataBase"))
                 return false;
 
-            for (int i = 0; i < jd["DataBase"].Count; i++)
+            for (int i = 0; i < Manager.UserData["DataBase"].Count; i++)
             {
-                Console.WriteLine(jd["DataBase"][i].ToString());
+                Console.WriteLine(Manager.UserData["DataBase"][i].ToString());
             }
 
             return true;
@@ -221,6 +290,8 @@ namespace Task3
         {
             if (Sqls.Count == 0)
                 return false;
+            if (Sqls.Peek() == "user")
+                return SetUser();
            if(Sqls.Contains("where"))
             {
                 return UpdateGivenValue(Name());
@@ -252,8 +323,41 @@ namespace Task3
                     return DropTable(Name());
                 case "index":
                     return DropIndex(Name());
+                case "user":
+                    return DropUser();
             }
             return false;
+        }
+        bool DropUser()
+        {
+            if (!FileHelper.isExists("Manager.json", FileType.Default))
+                return false;
+            if (!QueueEquals("username"))
+                return false;
+            if (!QueueEquals("="))
+                return false;
+            if (Sqls.Count == 0)
+                return false;
+
+            string username = Sqls.Dequeue();
+            if (username == Manager.UserData["UserName"].ToString())
+                return false;
+            
+            JsonData jd = JsonMapper.ToObject(FileHelper.GetFileContenct("Manager.json", FileType.Default));
+            for (int i = 0; i < jd.Count; i++)
+            {
+                if(jd[i]["UserName"].ToString()==username)
+                {
+                    for (int j= 0; j < jd[i]["DataBase"].Count; j++)
+                    {
+                        DropDatabase(jd[i]["DataBase"][j].ToString());
+                    }
+                    jd.Remove(jd[i]);
+                }
+            }
+            jd = jd;
+            FileHelper.SetFileContenct("Manager.json", FileType.Default, jd.ToJson(), FileMode.Truncate);
+            return true;
         }
         bool DropDatabase(string name)
         {
@@ -331,7 +435,155 @@ namespace Task3
                     return (CreateIndex(Name()));
                 case "database":
                     return (CreateDataBase(Name()));
+                case "user":
+                    return (CreateUser());
                    
+            }
+            return false;
+        }
+        bool CheckType(string s)
+        {
+            switch(s)
+            {
+                case "insert":
+                    return true;
+                case "create":
+                    return true;
+                case "delete":
+                    return true;
+                case "drop":
+                    return true;
+                case "select":
+                    return true;
+                case "alter":
+                    return true;
+                case "update":
+                    return true;
+              
+            }
+            return false;
+        }
+        bool SetUser()
+        {
+            string username = "";
+            if (!QueueEquals("user"))
+                return false;
+            if (!QueueEquals("username"))
+                return false;
+            if (!QueueEquals("="))
+                return false;
+            if (Sqls.Count == 0)
+                return false;
+            username = Name();
+            List<string> name = new List<string>();
+            List<string> result = new List<string>();
+            while (Sqls.Count > 0)
+            {
+                string type = Sqls.Dequeue();
+                if (!CheckType(type))
+                    return false;
+                name.Add(type);
+                if (!QueueEquals("="))
+                    return false;
+                if (Sqls.Count == 0)
+                    return false;
+                string s = Sqls.Dequeue();
+                if(s!="true"&&s!="false")
+                {
+                    return false;
+                }
+                result.Add(s);
+               
+
+                if (Sqls.Count != 0)
+                {
+                    if (!QueueEquals(","))
+                        return false;
+                }
+            }
+            JsonData jd = JsonMapper.ToObject(FileHelper.GetFileContenct("Manager.json", FileType.Default));
+            for (int i = 0; i < jd.Count; i++)
+            {
+                if(jd[i]["UserName"].ToString()==username)
+                {
+                    for (int j = 0; j < name.Count; j++)
+                    {
+                     
+                        jd[i][name[j]] =bool.Parse( result[j]);
+                    }
+                }
+            }
+            FileHelper.SetFileContenct("Manager.json",FileType.Default, jd.ToJson(), FileMode.Truncate);
+            return true;
+        }
+        bool CreateUser()
+        {
+            if (!QueueEquals("username"))
+                return false;
+            if (!QueueEquals("="))
+                return false;
+            if (Sqls.Count == 0)
+                return false;
+
+            string username = Sqls.Dequeue();
+            if (!QueueEquals(","))
+                return false;
+            if (!QueueEquals("password"))
+                return false;
+            if (!QueueEquals("="))
+                return false;
+            if (Sqls.Count == 0)
+                return false;
+            string password = Sqls.Dequeue();
+            if (Sqls.Count != 0)
+            {
+                if (!QueueEquals("set"))
+                    return false;
+            }
+            List<string> name = new List<string>();
+            List<string> result = new List<string>();
+            while (Sqls.Count > 0)
+            {
+                string temp = Sqls.Dequeue();
+                if (!CheckType(temp))
+                    return false;
+                name.Add(temp);
+                if (!QueueEquals("="))
+                    return false;
+                if (Sqls.Count == 0)
+                    return false;
+                string boo = Sqls.Dequeue();
+                result.Add(boo);
+                if (boo != "true" && boo != "false")
+                    return false;
+                if (Sqls.Count != 0)
+                {
+                    if (!QueueEquals(","))
+                        return false;
+                }
+
+            }
+            if(FileHelper.isExists("Manager.json",FileType.Default))
+            {
+                JsonData jd = JsonMapper.ToObject(FileHelper.GetFileContenct("Manager.json", FileType.Default));
+                JsonData jd2 = new JsonData();
+                jd2["UserName"] = username;
+                jd2["Password"] = password;
+                jd2["select"] = true;
+                jd2["update"] = true;
+                jd2["delete"] = true;
+                jd2["insert"] = true;
+                jd2["create"] = true;
+                jd2["drop"] = true;
+                jd2["alter"] = true;
+                for (int i = 0; i < name.Count; i++)
+                {
+                    jd2[name[i]] =bool.Parse( result[i]);
+                }
+                jd.Add(jd2);
+                jd = jd;
+                FileHelper.SetFileContenct("Manager.json", FileType.Default, jd.ToJson(), FileMode.Truncate);
+                return true;
             }
             return false;
         }
@@ -1073,9 +1325,30 @@ namespace Task3
                      
                         if (tablename.Count != time)
                             return false;
-                         
+
                         if (Sqls.Count == 0)
+                        {
+                            List<string> AllParams = new List<string>();
+                            for (int i = 0; i < tablename.Count; i++)
+                            {
+
+                                JsonData jd2 = JsonMapper.ToObject(FileHelper.GetFileContenct(tablename[i], FileType.Table));
+                                for (int j = 0; j < jd2["Params"].Count; j++)
+                                {
+                                    AllParams.Add(jd2["Params"][j]["ParamName"].ToString());
+                                }
+
+                            }
+
+                            for (int i = 0; i < paramsname.Count; i++)
+                            {
+
+                                if (!AllParams.Contains(paramsname[i]) && paramsname[i] != "*")
+                                    return false;
+                            }
+
                             return true;
+                        }
                         
                         string b = Sqls.Dequeue();
                         if (b == ",")
@@ -1099,14 +1372,14 @@ namespace Task3
                                 }
                                  
                             }
-                        
+                            
                             for (int i = 0; i < paramsname.Count; i++)
                             {
-                               
+                              
                                 if (!AllParams.Contains(paramsname[i])&& paramsname[i]!="*")
                                     return false;
                             }
-                           
+                            
                             if (Sqls.Count == 0)
                                 return false;
                            
@@ -1114,6 +1387,7 @@ namespace Task3
                             {
 
                                 string c = Sqls.Dequeue();
+                              
                                 if (!AllParams.Contains(c))
                                     return false;
                               
@@ -1123,6 +1397,7 @@ namespace Task3
                                     return false;
 
                                 string d = Sqls.Dequeue();
+                                
                                 if (d == "=")
                                 {
                                     operation.Add(d);
@@ -1326,16 +1601,60 @@ namespace Task3
              
         }
         
-        List<JsonData> GetConnectTableValueList(List<JsonData> tables)
+        List<JsonData> GetConnectTableValueList(List<JsonData> tables, string param,string operation, string value)
         {
            
             List<JsonData> Values = new List<JsonData>();
             JsonData First = tables[0];
             tables.RemoveAt(0);
-            int Count = tables.Count;
-            while (Count>0)
+            JsonData Second = tables[0];
+            tables.RemoveAt(0);
+            string type = "";
+            for (int n = 0; n < First["Params"].Count; n++)
             {
-                
+                if (First["Params"][n]["ParamName"].ToString() == param)
+                {
+                    type = First["Params"][n]["Type"].ToString();
+                    break;
+                }
+            }
+
+            for (int i = 0; i < First["Values"].Count; i++)
+                {
+                  
+                    for (int j  = 0; j < Second["Values"].Count; j++)
+                    {
+                        
+                        JsonData json = new JsonData();
+                        
+
+                        if (Compare(First["Values"][i][param].ToString(), Second["Values"][j][value].ToString(), operation, type == "string" ? true : false))
+                        {
+                            for (int l = 0; l < First["Params"].Count; l++)
+                            {
+
+                                json[First["Params"][l]["ParamName"].ToString()] = First["Values"][i][First["Params"][l]["ParamName"].ToString()];
+                            }
+                            for (int m = 0; m < Second["Params"].Count; m++)
+                            {
+
+                                json[Second["Params"][m]["ParamName"].ToString()] = Second["Values"][j][Second["Params"][m]["ParamName"].ToString()];
+                            }
+                           
+                                Values.Add(json);
+                        }
+                    }
+                }
+            return Values;
+        }
+        List<JsonData> GetConnectTableValueList(List<JsonData> tables)
+        {
+            List<JsonData> Values = new List<JsonData>();
+            JsonData First = tables[0];
+            tables.RemoveAt(0);
+            int Count = tables.Count;
+            while (Count > 0)
+            {
                 JsonData Second = tables[0];
                 tables.RemoveAt(0);
                 JsonData temp = new JsonData();
@@ -1349,40 +1668,40 @@ namespace Task3
                 {
                     temp["Params"].Add(Second["Params"][m]);
                 }
-                  for (int i = 0; i < First["Values"].Count; i++)
+                for (int i = 0; i < First["Values"].Count; i++)
                 {
-                  
-                    for (int j  = 0; j < Second["Values"].Count; j++)
+
+                    for (int j = 0; j < Second["Values"].Count; j++)
                     {
-                        
+
                         JsonData json = new JsonData();
                         for (int l = 0; l < First["Params"].Count; l++)
                         {
-                               
+
                             json[First["Params"][l]["ParamName"].ToString()] = First["Values"][i][First["Params"][l]["ParamName"].ToString()];
                         }
-                        for (int m= 0; m < Second["Params"].Count; m++)
+                        for (int m = 0; m < Second["Params"].Count; m++)
                         {
-                               
+
                             json[Second["Params"][m]["ParamName"].ToString()] = Second["Values"][j][Second["Params"][m]["ParamName"].ToString()];
                         }
                         temp["Values"].Add(json);
-                        if(tables .Count== 0)
-                        Values.Add(json);
+                        if (tables.Count == 0)
+                            Values.Add(json);
                     }
                 }
                 First = temp;
-                
+
                 Count--;
             }
             return Values;
         }
-        JsonData ConnectTable(List<JsonData> tables)
+        JsonData ConnectTable(List<JsonData> tables,string param,string operation,string value)
         {
             JsonData temp = new JsonData();
             temp["Params"] = new JsonData();
             temp["Values"] = new JsonData();
-            List<JsonData> Values = GetConnectTableValueList(new List<JsonData>(tables));  
+            List<JsonData> Values = GetConnectTableValueList(new List<JsonData>(tables),param,operation,value);  
             for (int i = 0; i < tables.Count; i++)
             {
                 for (int j = 0; j < tables[i]["Params"].Count; j++)
@@ -1397,8 +1716,48 @@ namespace Task3
             }
             return temp;
         }
-        JsonData ChooseTable(List<string> givenparam,List<string> givenvalue,JsonData table)
+        bool Compare(string a,string b,string operation,bool isstring)
         {
+            
+            int i=-2;
+            if (isstring)
+            {
+                 i = a.CompareTo(b);
+            }
+            else
+            {
+
+                
+                i = int.Parse(a).CompareTo(int.Parse(b));
+            }
+            switch (operation)
+            {
+                case "=":
+                    if (i==0)
+                        return true;
+                    break;
+                case ">":
+                    if (i==1)
+                        return true;
+                    break;
+                case "<":
+                    if (i==-1)
+                        return true;
+                    break;
+            }
+            return false;
+        }
+        JsonData ChooseTable(string givenparam,string operation,string givenvalue,JsonData table)
+        {
+          
+           
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+
+            //耗时巨大的代码  
+
+           
+            //耗时巨大的代码  
             JsonData result = new JsonData();
             result["Params"] = new JsonData();
             result["Values"] = new JsonData();
@@ -1408,43 +1767,126 @@ namespace Task3
                 result["Params"].Add(table["Params"][i]);
                 temp.Add(table["Params"][i]["ParamName"].ToString());          
             }
-            for (int i = 0; i < givenparam.Count; i++)
-            {
-                if (!temp.Contains(givenparam[i]))
+         
+                if (!temp.Contains(givenparam))
                  return null;
-            }
-            for (int j = 0; j < table["Values"].Count; j++)
-             {  
-              
-                int count = 0;
-                for (int i = 0; i < givenvalue.Count; i++)
-                {
-                    if (!temp.Contains(givenvalue[i]))
-                    {
-                        if (table["Values"][j][givenparam[i]].ToString() == givenvalue[i])
-                        {
-                            count++;
-                        }
-                    }
-                    else
-                    {
-                     
-                        if (table["Values"][j][givenparam[i]].ToString() == table["Values"][j][givenvalue[i]].ToString())
-                        {
-                           
-                            count++;
-                           
-                        }
-                    }
-                }
-                
-                if (count == givenvalue.Count)
-                {   
-                    result["Values"].Add(table["Values"][j]);
-                }
+            
 
+            //for (int l = 0;l < givenvalue.Count;l++)
+            //{
+            //    for (int k = 0; k < table["Params"].Count; k++)
+            //    {
+            //        int count = 0;
+            //        if (table["Params"][k]["ParamName"].ToString() == givenparam[l])
+            //        {
+            //            if (table["Params"][k].Keys.Contains("Index"))
+            //            {
+            //                List<string> rows = SelectByIndex(table["Params"][k]["Index"].ToString(), givenvalue[l]);
+            //            }
+            //            else
+            //            {
+            //                for (int j = 0; j < table["Values"].Count; j++)
+            //                {
+            //                    for (int i = 0; i < givenvalue.Count; i++)
+            //                    {
+            //                        if (!temp.Contains(givenvalue[i]))
+            //                        {
+            //                            string type = "";
+            //                            for (int m = 0; m < table["Params"].Count; m++)
+            //                            {
+            //                                if (table["Params"][m]["ParamName"].ToString() == givenparam[i])
+            //                                {
+            //                                    type = table["Params"][m]["Type"].ToString();
+            //                                    break;
+            //                                }
+            //                            }
+            //                            if (Compare(table["Values"][j][givenparam[i]].ToString(), givenvalue[i], operation[i], type == "string" ? true : false))
+            //                            {
+            //                                count++;
+            //                            }
+            //                        }
+            //                        else
+            //                        {
+            //                            isconnected = true;
+            //                            string type = "";
+            //                            for (int m = 0; m < table["Params"].Count; m++)
+            //                            {
+            //                                if (table["Params"][m]["ParamName"].ToString() == givenparam[i])
+            //                                {
+            //                                    type = table["Params"][m]["Type"].ToString();
+            //                                    break;
+            //                                }
+            //                            }
+            //                            if (Compare(table["Values"][j][givenparam[i]].ToString(), table["Values"][j][givenvalue[i]].ToString(), operation[i], type == "string" ? true : false))
+            //                            {
+
+            //                                count++;
+
+            //                            }
+            //                        }
+            //                    }
+
+
+            //                    if (count == givenvalue.Count)
+            //                    {
+            //                        result["Values"].Add(table["Values"][j]);
+            //                    }
+
+
+            //                }
+            //            }
+
+
+            //        }
+            //    }
+            //}
+
+            for (int j = 0; j < table["Values"].Count; j++)
+            {
+
+                        string type = "";
+                        for (int m = 0; m < table["Params"].Count; m++)
+                        {
+                            if (table["Params"][m]["ParamName"].ToString() == givenparam)
+                            {
+                                type = table["Params"][m]["Type"].ToString();
+                                break;
+                            }
+                        }
+                        if (Compare(table["Values"][j][givenparam].ToString(), givenvalue, operation, type == "string" ? true : false))
+                        {
+                    result["Values"].Add(table["Values"][j]);
+                        }
             }
+
+            sw.Stop();
+            TimeSpan ts2 = sw.Elapsed;
+            Console.WriteLine("选择总共花费{0}ms.", ts2.TotalMilliseconds);
             return result;
+        }
+        JsonData TableCartesianProduct(List<JsonData> tables)
+        {
+            if (tables.Count == 1)
+                return tables[0];
+
+            JsonData temp = new JsonData();
+            temp["Params"] = new JsonData();
+            temp["Values"] = new JsonData();
+         
+            List<JsonData> Values = GetConnectTableValueList(new List<JsonData>(tables));
+            for (int i = 0; i < tables.Count; i++)
+            {
+                for (int j = 0; j < tables[i]["Params"].Count; j++)
+                {
+                    temp["Params"].Add(tables[i]["Params"][j]);
+
+                }
+            }
+            for (int i = 0; i < Values.Count; i++)
+            {
+                temp["Values"].Add(Values[i]);
+            }
+            return temp;
         }
         JsonData SelectDataFromTable(List<string> paramname,JsonData table)
         {
@@ -1501,53 +1943,109 @@ namespace Task3
             }
             return Result;
         }
+        List<string> SelectByIndex(string indexname,string key)
+        {
+            DateTime beforDT = System.DateTime.Now;
+
+            //耗时巨大的代码  
+
+           
+            Record record = null;
+            B_Tree tree = new B_Tree(5);
+            JsonData index = JsonMapper.ToObject(FileHelper.GetFileContenct(indexname + ".index", FileType.Default));
+
+            if (index == null)
+                return null;
+            for (int i = 0; i < index.Count; i++)
+            {
+                List<string> temp = new List<string>();
+                for (int j = 0; j < index[i]["Values"].Count; j++)
+                {
+                    temp.Add(index[i]["Values"][j].ToString());
+                }
+                tree.Insert(new Record(index[i]["Key"].ToString(), temp));
+            }
+            tree.Find(key, out record);
+            if (record == null)
+                return null;
+
+            DateTime afterDT = System.DateTime.Now;
+            TimeSpan ts = afterDT.Subtract(beforDT);
+            Console.WriteLine("索引查找总共花费{0}ms.", ts.TotalMilliseconds);
+            return record.Datas;
+        }
+        JsonData GetTableByParam(List<JsonData> table, string param)
+        {
+            for (int i = 0; i < table.Count; i++)
+            {
+                List<string> tableparams = new List<string>();
+             
+                for (int j = 0; j < table[i]["Params"].Count; j++)
+                {
+                    tableparams.Add(table[i]["Params"][j]["ParamName"].ToString());
+                }
+                if (tableparams.Contains(param))
+                    return table[i];
+            }
+            return null;
+        }
         bool SelectGivenValue()
         {
-            bool result = GetSelectParamList();
-            
-            if(tablename.Count>1)
+            //耗时巨大的代码  
+            if (!GetSelectParamList())
+                return false;
+            List<string> tableparams = new List<string>();
+            List<JsonData> tables = new List<JsonData>();
+            for (int i = 0; i < tablename.Count; i++)
             {
-                List<JsonData> TablesJson = new List<JsonData>();
-                for (int i = 0; i < tablename.Count; i++)
+                JsonData table = JsonMapper.ToObject(FileHelper.GetFileContenct(tablename[i], FileType.Table));
+                tables.Add(table);
+                for (int j = 0; j < table["Params"].Count; j++)
                 {
-                    TablesJson.Add(JsonMapper.ToObject(FileHelper.GetFileContenct(tablename[i], FileType.Table)));
-                }
-                JsonData Result = SelectDataFromTable(paramsname, ChooseTable(givenparamsname, givenvalues, ConnectTable(TablesJson)));
-                ShowTable(Result);
+                    tableparams.Add(table["Params"][j]["ParamName"].ToString());
+                }       
             }
+            if (givenvalues.Count > 0)
+            {
+                List<JsonData> NowTable = new List<JsonData>();
+                for (int i = 0; i < givenvalues.Count; i++)
+                {
+                    if (!tableparams.Contains(givenvalues[i]))
+                    {
+                        JsonData json = GetTableByParam(tables, givenparamsname[i]);
+                        JsonData ChooseResult = ChooseTable(givenparamsname[i], operation[i], givenvalues[i], json);
+                        tables[tables.FindIndex((t) => { return t.ToJson() == json.ToJson(); })] = ChooseResult;
+                        NowTable.Add(ChooseResult);
+                    }
 
-            // List<JsonData> temp = new List<JsonData>()
-            // {
-            //     JsonMapper.ToObject(FileHelper.GetFileContenct("testtable", FileType.Table)),
-            //     JsonMapper.ToObject(FileHelper.GetFileContenct("testtable2", FileType.Table)),
-            //     JsonMapper.ToObject(FileHelper.GetFileContenct("testtable3", FileType.Table))
-            //};   
-            // Console.WriteLine(ChooseTable(new List<string>() { "a" }, new List<string>() { "33333" }, temp[0]).ToJson());
-            // ShowTable(JsonMapper.ToObject(FileHelper.GetFileContenct("testtable", FileType.Table)));
-            // foreach (var item in paramsname)
-            // {
-            //     Console.WriteLine(item);
-            // }
+                }
+              
+                for (int i = 0; i < givenvalues.Count; i++)
+                {
+                    if (tableparams.Contains(givenvalues[i]))
+                    {
+                        JsonData first = GetTableByParam(tables, givenparamsname[i]);
+                        JsonData second = GetTableByParam(tables, givenvalues[i]);
+                        NowTable.Remove(first);
+                        NowTable.Remove(second);
+                        tables.Remove(first);
+                        tables.Remove(second);
+                        JsonData ConnectResult = ConnectTable(new List<JsonData>() {first,second }, givenparamsname[i], operation[i], givenvalues[i]);
+                        NowTable.Add(ConnectResult);
+                        tables.Add(ConnectResult);
+                    }
+                }
 
-            // foreach (var item in tablename)
-            // {
+                JsonData result = SelectDataFromTable(paramsname, TableCartesianProduct(NowTable));
+                ShowTable(result);
 
-            //     Console.WriteLine(item);
-            // }
-
-            //foreach (var item in givenparamsname)
-            //{
-            //    Console.WriteLine(item);
-            //}
-
-            //foreach (var item in givenvalues)
-            //{
-            //    Console.WriteLine(item);
-            //}
-
-
-
-            return result;
+            }
+            else
+            {
+                JsonData result = SelectDataFromTable(paramsname, TableCartesianProduct(tables));
+                ShowTable(result);
+            }
+            return true;
         }
         bool AlterTable()
         {
@@ -1653,9 +2151,13 @@ namespace Task3
                 {
                     for (int j = 0; j < table["Values"].Count; j++)
                     {
-                        if(table["Values"][j][table["Params"][i]["ParamName"].ToString()].ToString().Length>MaxLength[i]-2)
+                           if(System.Text.Encoding.Default.GetBytes(table["Params"][i]["ParamName"].ToString()).Length > MaxLength[i] - 2)
+                    {
+                        MaxLength[i] = System.Text.Encoding.Default.GetBytes(table["Params"][i]["ParamName"].ToString()).Length + 2;
+                    }
+                    if (System.Text.Encoding.Default.GetBytes(table["Values"][j][table["Params"][i]["ParamName"].ToString()].ToString()).Length>MaxLength[i]-2)
                         {
-                            MaxLength[i] = table["Values"][j][table["Params"][i]["ParamName"].ToString()].ToString().Length+2;
+                            MaxLength[i] = System.Text.Encoding.Default.GetBytes(table["Values"][j][table["Params"][i]["ParamName"].ToString()].ToString()).Length+2;
                         }
                     }
                 }
@@ -1674,7 +2176,7 @@ namespace Task3
                   
                     
                     Console.Write(table["Params"][j]["ParamName"].ToString());
-                    for (int m = 0; m < Length[j] - table["Params"][j]["ParamName"].ToString().Length; m++)
+                    for (int m = 0; m < Length[j] - System.Text.Encoding.Default.GetBytes(table["Params"][j]["ParamName"].ToString()).Length; m++)
                     {
                         Console.Write(" ");
                     }
@@ -1691,7 +2193,7 @@ namespace Task3
                     for (int j = 0; j < table["Params"].Count; j++)
                     {
                         Console.Write(table["Values"][i][table["Params"][j]["ParamName"].ToString()].ToString());
-                        for (int m = 0; m < Length[j] - table["Values"][i][table["Params"][j]["ParamName"].ToString()].ToString().Length; m++)
+                        for (int m = 0; m < Length[j] - System.Text.Encoding.Default.GetBytes(table["Values"][i][table["Params"][j]["ParamName"].ToString()].ToString()).Length; m++)
                         {
                             Console.Write(" ");
                         }
@@ -1713,7 +2215,7 @@ namespace Task3
                 if (!GetDeleteGivenList(GetTableParams(tablename)))
                     return false;
 
-
+                List<JsonData> removedata = new List<JsonData>();
                 for (int j = 0; j < table["Values"].Count; j++)
                 {
                     bool isEqual = true;
@@ -1725,7 +2227,7 @@ namespace Task3
 
                         }
                     }
-
+             
                     if (isEqual)
                     {
                         for (int i = 0; i < table["Params"].Count; i++)
@@ -1758,10 +2260,15 @@ namespace Task3
                                 }
                             }
                         }
-                        table["Values"].Remove(table["Values"][j]);
+                        removedata.Add(table["Values"][j]);
+                      
                         
                         isEqual = false;
                     }
+                }
+                for (int i = 0; i < removedata.Count; i++)
+                {
+                    table["Values"].Remove(removedata[i]);
                 }
             
                 FileHelper.SetFileContenct(tablename, FileType.Table, table.ToJson(),FileMode.Truncate);
