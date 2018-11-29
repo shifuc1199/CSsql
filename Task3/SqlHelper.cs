@@ -42,6 +42,44 @@ namespace Task3
             Console.Write("CSSql-->");
 
         }
+        public void InitIndexTree()
+        {
+            if (!Manager.UserData.Keys.Contains("DataBase"))
+                return ;
+
+            for (int i = 0; i < Manager.UserData["DataBase"].Count; i++)
+            {
+                JsonData database = JsonMapper.ToObject(FileHelper.GetFileContenct( Manager.UserData["DataBase"][i].ToString(),FileType.DataBase));
+                for (int m = 0; m< database.Count; m++)
+                {
+                    JsonData table = JsonMapper.ToObject(FileHelper.GetFileContenct(database[m].ToString(), FileType.Table)); 
+                    for (int j = 0; j < table["Params"].Count; j++)
+                    {
+                        if (table["Params"][j].Keys.Contains("Index"))
+                        {
+                            JsonData index = JsonMapper.ToObject(FileHelper.GetFileContenct(table["Params"][j]["Index"].ToString() + ".index", FileType.Default));
+                            B_Tree tree = new B_Tree(5);
+                            for (int k = 0; k < index.Count; k++)
+                            {
+                                List<string> datas = new List<string>();
+                                for (int l = 0; l < index[k]["Values"].Count; l++)
+                                {
+                                   
+                                    datas.Add(index[k]["Values"][l].ToString());
+                                }
+                                tree.Insert(new Record(index[k]["Key"].ToString(), datas));
+                            }
+                            if (!Manager.Indexs.ContainsKey(table["Params"][j]["Index"].ToString()))
+                                Manager.Indexs.Add(table["Params"][j]["Index"].ToString(), tree);
+                            else
+                                Manager.Indexs[table["Params"][j]["Index"].ToString()] = tree;
+
+
+                        }
+                    }
+                }
+            }
+        }
         public void Login()
         {
             if (!File.Exists("Manager.json"))
@@ -72,6 +110,7 @@ namespace Task3
                 Console.WriteLine();
                 Console.WriteLine();
                 Console.Write("CSSql-->");
+
             }
             else
             {
@@ -95,11 +134,14 @@ namespace Task3
                             return;
                         }
                         Manager.UserData = jd[i];
+                        Console.WriteLine("正在初始化数据库!!");
+                        InitIndexTree();
                         Console.WriteLine("数据库启动成功!!");
                         Console.WriteLine();
                         Console.WriteLine("你的权限: "+"Create:"+ (bool)Manager.UserData["create"]+" Insert:"+ (bool)Manager.UserData["insert"]+" Drop:"+ (bool)Manager.UserData["drop"]+" Update:"+ (bool)Manager.UserData["update"]+" Select:"+ (bool)Manager.UserData["select"]+" Delete:"+ (bool)Manager.UserData["delete"]+" Alter:"+ (bool)Manager.UserData["alter"]);
                         Console.WriteLine();
                         Console.Write("CSSql-->");
+                       
                         return;
                     }        
                }
@@ -154,6 +196,8 @@ namespace Task3
                     {
                         Manager.UserData = jd[i];
                         Manager.DatabaseName = "";
+                        Manager.Indexs.Clear();
+                        InitIndexTree();
                         Console.WriteLine("切换成功!");
                         Console.WriteLine("你的权限: " + "Create:" + (bool)Manager.UserData["create"] + " Insert:" + (bool)Manager.UserData["insert"] + " Drop:" + (bool)Manager.UserData["drop"] + " Update:" + (bool)Manager.UserData["update"] + " Select:" + (bool)Manager.UserData["select"] + " Delete:" + (bool)Manager.UserData["delete"] + " Alter:" + (bool)Manager.UserData["alter"]);
 
@@ -165,7 +209,7 @@ namespace Task3
         }
         bool Commond()
         {
-        
+            InitIndexTree();
             if (Sqls.Count == 0)
                 return false;
             string s = Sqls.Dequeue();
@@ -1698,6 +1742,9 @@ namespace Task3
         }
         JsonData ConnectTable(List<JsonData> tables,string param,string operation,string value)
         {
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+
             JsonData temp = new JsonData();
             temp["Params"] = new JsonData();
             temp["Values"] = new JsonData();
@@ -1713,7 +1760,11 @@ namespace Task3
             for (int i = 0; i < Values.Count; i++)
             {
                 temp["Values"].Add(Values[i]);
+
             }
+            sw.Stop();
+            TimeSpan ts2 = sw.Elapsed;
+            Console.WriteLine("连接{1}{2}{3}总共花费{0}ms.", ts2.TotalMilliseconds,param,operation,value);
             return temp;
         }
         bool Compare(string a,string b,string operation,bool isstring)
@@ -1726,8 +1777,7 @@ namespace Task3
             }
             else
             {
-
-                
+  
                 i = int.Parse(a).CompareTo(int.Parse(b));
             }
             switch (operation)
@@ -1751,12 +1801,11 @@ namespace Task3
         {
           
            
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
+          
 
             //耗时巨大的代码  
-
-           
+            
+            string IndexName = "";
             //耗时巨大的代码  
             JsonData result = new JsonData();
             result["Params"] = new JsonData();
@@ -1765,103 +1814,65 @@ namespace Task3
             for (int i = 0; i < table["Params"].Count; i++)
             {
                 result["Params"].Add(table["Params"][i]);
-                temp.Add(table["Params"][i]["ParamName"].ToString());          
+                temp.Add(table["Params"][i]["ParamName"].ToString());
+                if (givenparam == table["Params"][i]["ParamName"].ToString())
+                {
+                    if (table["Params"][i].Keys.Contains("Index"))
+                    {
+                        IndexName = table["Params"][i]["Index"].ToString();
+                    }
+                }
             }
          
                 if (!temp.Contains(givenparam))
                  return null;
-            
 
-            //for (int l = 0;l < givenvalue.Count;l++)
-            //{
-            //    for (int k = 0; k < table["Params"].Count; k++)
-            //    {
-            //        int count = 0;
-            //        if (table["Params"][k]["ParamName"].ToString() == givenparam[l])
-            //        {
-            //            if (table["Params"][k].Keys.Contains("Index"))
-            //            {
-            //                List<string> rows = SelectByIndex(table["Params"][k]["Index"].ToString(), givenvalue[l]);
-            //            }
-            //            else
-            //            {
-            //                for (int j = 0; j < table["Values"].Count; j++)
-            //                {
-            //                    for (int i = 0; i < givenvalue.Count; i++)
-            //                    {
-            //                        if (!temp.Contains(givenvalue[i]))
-            //                        {
-            //                            string type = "";
-            //                            for (int m = 0; m < table["Params"].Count; m++)
-            //                            {
-            //                                if (table["Params"][m]["ParamName"].ToString() == givenparam[i])
-            //                                {
-            //                                    type = table["Params"][m]["Type"].ToString();
-            //                                    break;
-            //                                }
-            //                            }
-            //                            if (Compare(table["Values"][j][givenparam[i]].ToString(), givenvalue[i], operation[i], type == "string" ? true : false))
-            //                            {
-            //                                count++;
-            //                            }
-            //                        }
-            //                        else
-            //                        {
-            //                            isconnected = true;
-            //                            string type = "";
-            //                            for (int m = 0; m < table["Params"].Count; m++)
-            //                            {
-            //                                if (table["Params"][m]["ParamName"].ToString() == givenparam[i])
-            //                                {
-            //                                    type = table["Params"][m]["Type"].ToString();
-            //                                    break;
-            //                                }
-            //                            }
-            //                            if (Compare(table["Values"][j][givenparam[i]].ToString(), table["Values"][j][givenvalue[i]].ToString(), operation[i], type == "string" ? true : false))
-            //                            {
-
-            //                                count++;
-
-            //                            }
-            //                        }
-            //                    }
-
-
-            //                    if (count == givenvalue.Count)
-            //                    {
-            //                        result["Values"].Add(table["Values"][j]);
-            //                    }
-
-
-            //                }
-            //            }
-
-
-            //        }
-            //    }
-            //}
-
-            for (int j = 0; j < table["Values"].Count; j++)
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            if (IndexName!="")
             {
+             
+             
+              List<string> r= SelectByIndex(IndexName,givenvalue);
+                
+                if(r!=null)
+                {
+                    for (int i = 0; i < r.Count; i++)
+                    {
+                        result["Values"].Add(table["Values"][int.Parse( r[i])]);
+                    }
+                     
+                }
 
-                        string type = "";
-                        for (int m = 0; m < table["Params"].Count; m++)
+                sw.Stop();
+                TimeSpan ts2 = sw.Elapsed;
+                Console.WriteLine("索引选择{1}{2}{3}总共花费{0}ms.", ts2.TotalMilliseconds, givenparam, operation, givenvalue);
+            }
+            else
+            {
+                for (int j = 0; j < table["Values"].Count; j++)
+                {
+
+                    string type = "";
+                    for (int m = 0; m < table["Params"].Count; m++)
+                    {
+                        if (table["Params"][m]["ParamName"].ToString() == givenparam)
                         {
-                            if (table["Params"][m]["ParamName"].ToString() == givenparam)
-                            {
-                                type = table["Params"][m]["Type"].ToString();
-                                break;
-                            }
+                            type = table["Params"][m]["Type"].ToString();
+                            break;
                         }
-                        if (Compare(table["Values"][j][givenparam].ToString(), givenvalue, operation, type == "string" ? true : false))
-                        {
-                    result["Values"].Add(table["Values"][j]);
-                        }
+                    }
+                    if (Compare(table["Values"][j][givenparam].ToString(), givenvalue, operation, type == "string" ? true : false))
+                    {
+                        result["Values"].Add(table["Values"][j]);
+                    }
+                }
+                sw.Stop();
+                TimeSpan ts2 = sw.Elapsed;
+                Console.WriteLine("选择{1}{2}{3}总共花费{0}ms.", ts2.TotalMilliseconds, givenparam, operation, givenvalue);
             }
 
-            sw.Stop();
-            TimeSpan ts2 = sw.Elapsed;
-            Console.WriteLine("选择总共花费{0}ms.", ts2.TotalMilliseconds);
+          
             return result;
         }
         JsonData TableCartesianProduct(List<JsonData> tables)
@@ -1945,33 +1956,18 @@ namespace Task3
         }
         List<string> SelectByIndex(string indexname,string key)
         {
-            DateTime beforDT = System.DateTime.Now;
+
 
             //耗时巨大的代码  
 
-           
+             
             Record record = null;
-            B_Tree tree = new B_Tree(5);
-            JsonData index = JsonMapper.ToObject(FileHelper.GetFileContenct(indexname + ".index", FileType.Default));
-
-            if (index == null)
-                return null;
-            for (int i = 0; i < index.Count; i++)
-            {
-                List<string> temp = new List<string>();
-                for (int j = 0; j < index[i]["Values"].Count; j++)
-                {
-                    temp.Add(index[i]["Values"][j].ToString());
-                }
-                tree.Insert(new Record(index[i]["Key"].ToString(), temp));
-            }
-            tree.Find(key, out record);
+       
+            Manager.Indexs[indexname].Find(key, out record);
             if (record == null)
                 return null;
 
-            DateTime afterDT = System.DateTime.Now;
-            TimeSpan ts = afterDT.Subtract(beforDT);
-            Console.WriteLine("索引查找总共花费{0}ms.", ts.TotalMilliseconds);
+         
             return record.Datas;
         }
         JsonData GetTableByParam(List<JsonData> table, string param)
@@ -2035,7 +2031,7 @@ namespace Task3
                         tables.Add(ConnectResult);
                     }
                 }
-
+            
                 JsonData result = SelectDataFromTable(paramsname, TableCartesianProduct(NowTable));
                 ShowTable(result);
 
@@ -2232,17 +2228,15 @@ namespace Task3
                     {
                         for (int i = 0; i < table["Params"].Count; i++)
                         {
-                            for (int m = 0; m < givenparamsname.Count; m++)
-                            {
+                             
                                 if (table["Params"][i].Keys.Contains("Index"))
                                 {
-                                    if (table["Params"][i]["ParamName"].ToString() == givenparamsname[m])
-                                    {
+                                    
                                         JsonData temp = JsonMapper.ToObject(FileHelper.GetFileContenct(table["Params"][i]["Index"]+".index",FileType.Default));
                                         JsonData removejson = null;
                                         for (int l = 0; l < temp.Count; l++)
                                         {
-                                            if(temp[i]["Key"].ToString()==givenvalues[m])
+                                            if(temp[i]["Key"].ToString()== table["Values"][j][table["Params"][i]["ParamName"].ToString()].ToString())
                                             {
                                                 temp[i]["Values"].Remove(j.ToString());
 
@@ -2256,9 +2250,9 @@ namespace Task3
                                         if (removejson != null)
                                             temp.Remove(removejson);
                                         FileHelper.SetFileContenct(table["Params"][i]["Index"] + ".index", FileType.Default, temp.ToJson(), FileMode.Truncate);
-                                    }
+                                   
                                 }
-                            }
+                            
                         }
                         removedata.Add(table["Values"][j]);
                       
