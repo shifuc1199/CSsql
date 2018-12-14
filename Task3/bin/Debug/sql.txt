@@ -2,6 +2,16 @@ create database class;use class;create table student(id int,name string,age int,
 use class;create table course(courseid int,coursename string,studentid int);insert into course values(1,数据结构,1);insert into course values(1,数据结构,2)
 create table grade(courseid int,studentid int,score int) 
 
+create index age_index on student(age)
+drop index age_index on student
+select * from student
+select * from student where sex=女
+select * from student where sex=女 and age>21
+select * from student,course where name=师鸿博 and coursename=数据结构
+select name,coursename,score from student,course,grade where gradecourseid=courseid and id=coursestudentid and score>80
+
+
+ 
 
 
 

@@ -50,6 +50,8 @@ namespace Task3
             for (int i = 0; i < Manager.UserData["DataBase"].Count; i++)
             {
                 JsonData database = JsonMapper.ToObject(FileHelper.GetFileContenct( Manager.UserData["DataBase"][i].ToString(),FileType.DataBase));
+                if (database.ToJson() == "")
+                    break;
                 for (int m = 0; m< database.Count; m++)
                 {
                     JsonData table = JsonMapper.ToObject(FileHelper.GetFileContenct(database[m].ToString(), FileType.Table)); 
@@ -392,9 +394,12 @@ namespace Task3
             {
                 if(jd[i]["UserName"].ToString()==username)
                 {
-                    for (int j= 0; j < jd[i]["DataBase"].Count; j++)
+                    if (jd[i].Keys.Contains("DataBase"))
                     {
-                        DropDatabase(jd[i]["DataBase"][j].ToString());
+                        for (int j = 0; j < jd[i]["DataBase"].Count; j++)
+                        {
+                            DropDatabase(jd[i]["DataBase"][j].ToString());
+                        }
                     }
                     jd.Remove(jd[i]);
                 }
@@ -1577,7 +1582,7 @@ namespace Task3
 
                                     }
                                 }
-                                 
+                                Tree.Show();
                               
                                 FileHelper.SetFileContenct(indexname + ".index", FileType.Default, tree.ToJson());
 
@@ -1652,25 +1657,67 @@ namespace Task3
             JsonData First = tables[0];
             tables.RemoveAt(0);
             JsonData Second = tables[0];
+          
             tables.RemoveAt(0);
+            string Indexname = "";
             string type = "";
             for (int n = 0; n < First["Params"].Count; n++)
             {
+                
                 if (First["Params"][n]["ParamName"].ToString() == param)
                 {
+                    if (First["Params"][n].Keys.Contains("Index"))
+                    {
+                        Indexname = First["Params"][n]["Index"].ToString();
+                    }
                     type = First["Params"][n]["Type"].ToString();
                     break;
                 }
             }
-
-            for (int i = 0; i < First["Values"].Count; i++)
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+            if (Indexname != "")
+            {
+                for (int i = 0; i < Second["Values"].Count; i++)
                 {
-                  
-                    for (int j  = 0; j < Second["Values"].Count; j++)
+                    
+                    List<string> temp=  SelectByIndex(Indexname, Second["Values"][i][value].ToString());
+                 
+                   if(temp!=null)
                     {
-                        
+                         
+                        for (int j = 0; j < temp.Count; j++)
+                        {
+                            JsonData json = new JsonData();
+                            for (int l = 0; l < First["Params"].Count; l++)
+                        {
+                                json[First["Params"][l]["ParamName"].ToString()] = First["Values"][int.Parse( temp[j])][First["Params"][l]["ParamName"].ToString()];
+                        }
+                       
+                        for (int m = 0; m < Second["Params"].Count; m++)
+                        {
+
+                            json[Second["Params"][m]["ParamName"].ToString()] = Second["Values"][i][Second["Params"][m]["ParamName"].ToString()];
+                        }
+                    
+                    Values.Add(json);
+                        }
+                    }
+                }
+                sw.Stop();
+                TimeSpan ts2 = sw.Elapsed;
+                Console.WriteLine("索引连接{1}{2}{3}总共花费{0}ms.", ts2.TotalMilliseconds, param, operation, value);
+            }
+            else
+            {
+                for (int i = 0; i < First["Values"].Count; i++)
+                {
+
+                    for (int j = 0; j < Second["Values"].Count; j++)
+                    {
+
                         JsonData json = new JsonData();
-                        
+
 
                         if (Compare(First["Values"][i][param].ToString(), Second["Values"][j][value].ToString(), operation, type == "string" ? true : false))
                         {
@@ -1684,11 +1731,15 @@ namespace Task3
 
                                 json[Second["Params"][m]["ParamName"].ToString()] = Second["Values"][j][Second["Params"][m]["ParamName"].ToString()];
                             }
-                           
-                                Values.Add(json);
+
+                            Values.Add(json);
                         }
                     }
                 }
+                sw.Stop();
+                TimeSpan ts2 = sw.Elapsed;
+                Console.WriteLine("连接{1}{2}{3}总共花费{0}ms.", ts2.TotalMilliseconds, param, operation, value);
+            }
             return Values;
         }
         List<JsonData> GetConnectTableValueList(List<JsonData> tables)
@@ -1742,9 +1793,8 @@ namespace Task3
         }
         JsonData ConnectTable(List<JsonData> tables,string param,string operation,string value)
         {
-            Stopwatch sw = new Stopwatch();
-            sw.Start();
-
+         
+            
             JsonData temp = new JsonData();
             temp["Params"] = new JsonData();
             temp["Values"] = new JsonData();
@@ -1762,9 +1812,7 @@ namespace Task3
                 temp["Values"].Add(Values[i]);
 
             }
-            sw.Stop();
-            TimeSpan ts2 = sw.Elapsed;
-            Console.WriteLine("连接{1}{2}{3}总共花费{0}ms.", ts2.TotalMilliseconds,param,operation,value);
+          
             return temp;
         }
         bool Compare(string a,string b,string operation,bool isstring)
@@ -1799,10 +1847,6 @@ namespace Task3
         }
         JsonData ChooseTable(string givenparam,string operation,string givenvalue,JsonData table)
         {
-          
-           
-          
-
             //耗时巨大的代码  
             
             string IndexName = "";
@@ -2011,6 +2055,11 @@ namespace Task3
                         JsonData json = GetTableByParam(tables, givenparamsname[i]);
                         JsonData ChooseResult = ChooseTable(givenparamsname[i], operation[i], givenvalues[i], json);
                         tables[tables.FindIndex((t) => { return t.ToJson() == json.ToJson(); })] = ChooseResult;
+                      
+                        if (tables.Count == 1)
+                        {
+                            NowTable.Clear();
+                        }
                         NowTable.Add(ChooseResult);
                     }
 
@@ -2031,7 +2080,7 @@ namespace Task3
                         tables.Add(ConnectResult);
                     }
                 }
-            
+              
                 JsonData result = SelectDataFromTable(paramsname, TableCartesianProduct(NowTable));
                 ShowTable(result);
 
